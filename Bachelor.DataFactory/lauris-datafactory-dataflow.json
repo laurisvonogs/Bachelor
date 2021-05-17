@@ -1,0 +1,65 @@
+{
+   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "dataFactoryName": {
+         "type": "string"
+      },
+      "inputJsonDataSet": {
+         "type": "string"
+      },
+      "outputJsonDataSet": {
+         "type": "string"
+      }
+   },
+   "variables": {
+      "dataFlow": "MappingDataFlow",
+      "dataFlowName": "[concat(parameters('dataFactoryName'), '/',variables('dataFlow'))]"
+   },
+   "resources": [
+      {
+         "type": "Microsoft.DataFactory/factories/dataflows",
+         "apiVersion": "2018-06-01",
+         "name": "[variables('dataFlowName')]",
+         "properties": {
+            "type": "MappingDataFlow",
+            "typeProperties": {
+               "sources": [
+                  {
+                     "dataset": {
+                        "referenceName": "[parameters('inputJsonDataSet')]",
+                        "type": "DatasetReference"
+                     },
+                     "name": "Input"
+                  }
+               ],
+               "sinks": [
+                  {
+                     "dataset": {
+                        "referenceName": "[parameters('outputJsonDataSet')]",
+                        "type": "DatasetReference"
+                     },
+                     "name": "OutputComposedToFIle"
+                  }
+               ],
+               "transformations": [
+                  {
+                     "name": "DeriveColumns"
+                  },
+                  {
+                     "name": "SelectColumns"
+                  }
+               ],
+               "script": "source(output(\n\t\tPerson_id as string,\n\t\tfirst_name as string,\n\t\tlast_name as string,\n\t\temail as string,\n\t\tgender as string,\n\t\tjob_title as string,\n\t\tcompany_name as string,\n\t\tcontract_until as string,\n\t\tcountry as string,\n\t\tcity as string,\n\t\tpostal_code as string,\n\t\tstreet_name as string,\n\t\tstreet_number as string,\n\t\tworks_from_office as boolean,\n\t\tmain_office as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tdocumentForm: 'documentPerLine') ~> Input\nInput derive(Full_Name = concat(first_name,' ', last_name),\n\t\tAddress = concat(street_name,' ',street_number,', ',coalesce(postal_code,''),' ',city,', ',country),\n\t\tCompany = company_name,\n\t\tGender = iif(equals(gender, 'Male'), 'M', 'F'),\n\t\tID = Person_id,\n\t\tJob_title = job_title,\n\t\tMail = email,\n\t\tWorks_from = iif(equals(works_from_office,true()),main_office,'Home'),\n\t\tisActive = iif(greaterOrEqual(toDate(contract_until, 'yyyy/MM/dd'), currentDate()), true(), false()),\n\t\tIntegration_type = 'Datafactory') ~> DeriveColumns\nDeriveColumns select(mapColumn(\n\t\tFull_Name,\n\t\tAddress,\n\t\tCompany,\n\t\tGender = DeriveColumns@Gender,\n\t\tID,\n\t\tJob_title = DeriveColumns@Job_title,\n\t\tMail,\n\t\tWorks_from,\n\t\tisActive,\n\t\tIntegration_type\n\t),\n\tskipDuplicateMapInputs: false,\n\tskipDuplicateMapOutputs: false) ~> SelectColumns\nSelectColumns sink(input(\n\t\tAddress as string,\n\t\tCompany as string,\n\t\tFull_Name as string,\n\t\tGender as string,\n\t\tID as string,\n\t\tJob_title as string,\n\t\tMail as string,\n\t\tWorks_from as string,\n\t\tisActive as boolean\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tpartitionFileNames:['output.json'],\n\tpartitionBy('hash', 1)) ~> OutputComposedToFIle"
+            }
+         }
+
+      }
+   ],
+   "outputs": {
+      "dataFlowName": {
+         "type": "string",
+         "value": "[variables('dataFlow')]"
+      }
+   }
+}

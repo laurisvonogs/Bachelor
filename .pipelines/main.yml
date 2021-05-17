@@ -1,0 +1,46 @@
+name: $(Date:yyyyMMdd)-$(Rev:rr)_$(SourceBranchName)
+
+resources:
+- repo: self
+  clean: true
+
+variables: 
+  agentPool: Azure Pipelines
+
+pool: 
+  name: $(agentPool)
+  vmImage: 'windows-latest'
+  demands: 
+  - msbuild
+  - visualstudio
+
+trigger:
+  branches:
+    exclude:
+    - master
+
+stages:
+- stage: buildAndPublish
+  displayName: Build and Publish
+  jobs:
+  - job: Build
+    workspace:
+      clean: all
+    steps:
+    - template: build/buildandpublish.yml
+    - powershell: echo "##vso[task.setvariable variable=agentName;isOutput=true]$(Agent.Name)"
+      name: SetAgentName
+
+- stage: deploy
+  displayName: Deploy
+  dependsOn: buildAndPublish
+  variables: 
+  - template: variables.yml
+  - name: fullResourceGroupName
+    value: lauris-shared
+  jobs: 
+  - template: deployment/_deploymentJobs.yml
+    parameters:
+      azureSubscription: Visual Studio Professional
+      armTemplateSubscription: Visual Studio Professional
+      environment: integrations

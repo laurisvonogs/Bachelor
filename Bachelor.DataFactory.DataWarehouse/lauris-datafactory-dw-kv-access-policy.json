@@ -1,0 +1,41 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "keyVaultName": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "The name of the KeyVault account."
+         }
+      },
+      "managedIdentityId": {
+         "type": "string",
+         "metadata": {
+            "description": "The resource group where storage account is located"
+         }
+      }
+   },
+   "variables": {
+   },
+   "resources": [
+      {
+         "type": "Microsoft.KeyVault/vaults/accessPolicies",
+         "name": "[concat(parameters('keyVaultName'), '/add')]",
+         "apiVersion": "2018-02-14",
+         "properties": {
+            "accessPolicies": [
+               {
+                  "tenantId": "[subscription().tenantId]",
+                  "objectId": "[parameters('managedIdentityId')]",
+                  "permissions": {
+                     "secrets": [
+                        "get"
+                     ]
+                  }
+               }
+            ]
+         }
+      }
+   ]
+}

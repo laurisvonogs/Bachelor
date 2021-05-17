@@ -1,0 +1,24 @@
+steps:
+  - task: AzurePowerShell@4
+    displayName: Set blob container variables
+    inputs:
+      azureSubscription: ${{ parameters.armTemplateSubscription }}
+      ScriptPath: $(Pipeline.Workspace)/drop-scripts/deployment/Set-BlobContainerVariables.ps1
+      azurePowerShellVersion: LatestVersion
+
+  - task: AzureResourceGroupDeployment@2
+    displayName: Deploy Function integration resources
+    inputs:
+      azureSubscription: ${{ parameters.azureSubscription }}
+      resourceGroupName: $(fullResourceGroupName)
+      location: $(azureRegionFull)
+      templateLocation: URL of the file
+      csmFileLink: $(deploymentBlobContainerUri)/templates/Bachelor.Function.Resources/_deploy-function.json$(deploymentBlobContainerSasToken)
+      overrideParameters: >
+        -keyVaultName $(keyVaultName)
+        -deploymentBlobContainerSasToken $(deploymentBlobContainerSasToken)
+        -deploymentBlobContainerUri $(deploymentBlobContainerUri)
+        -deploymentDateTimeStamp $(deploymentDateTimeStamp)
+        -inputApiUrl $(inputApiUrl)
+        -outputApiUrl $(outputApiUrl)
+      deploymentOutputs: outputs

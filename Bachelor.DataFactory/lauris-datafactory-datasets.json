@@ -1,0 +1,202 @@
+{
+   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "dataFactoryName": {
+         "type": "string"
+      },
+      "blobStorageLinkedService": {
+         "type": "string"
+      },
+      "inputRestApiLinkedService": {
+         "type": "string"
+      },
+      "outputRestApiLinkedService": {
+         "type": "string"
+      }
+   },
+   "variables": {
+      "inputBlobStorageDataSet": "InputBlobStorageDataset",
+      "inputBlobStorageDataSetName": "[concat(parameters('dataFactoryName'), '/',variables('inputBlobStorageDataSet'))]",
+      "outputBlobStorageDataSet": "OutputBlobStorageDataset",
+      "outputBlobStorageDataSetName": "[concat(parameters('dataFactoryName'), '/',variables('outputBlobStorageDataSet'))]",
+      "inputRestApiDataSet": "InputDataset",
+      "inputRestApiDataSetName": "[concat(parameters('dataFactoryName'), '/',variables('inputRestApiDataSet'))]",
+      "outputRestApiDataSet": "OutputDataset",
+      "outputRestApiDataSetName": "[concat(parameters('dataFactoryName'), '/',variables('outputRestApiDataSet'))]"
+   },
+   "resources": [
+      {
+         "name": "[variables('inputRestApiDataSetName')]",
+         "type": "Microsoft.DataFactory/factories/datasets",
+         "apiVersion": "2018-06-01",
+         "properties": {
+            "linkedServiceName": {
+               "referenceName": "[parameters('inputRestApiLinkedService')]",
+               "type": "LinkedServiceReference"
+            },
+            "annotations": [],
+            "type": "RestResource",
+            "schema": []
+         }
+      },
+      {
+         "name": "[variables('outputRestApiDataSetName')]",
+         "type": "Microsoft.DataFactory/factories/datasets",
+         "apiVersion": "2018-06-01",
+         "properties": {
+            "linkedServiceName": {
+               "referenceName": "[parameters('outputRestApiLinkedService')]",
+               "type": "LinkedServiceReference"
+            },
+            "annotations": [],
+            "type": "RestResource",
+            "schema": []
+         }
+      },
+      {
+         "name": "[variables('inputBlobStorageDataSetName')]",
+         "type": "Microsoft.DataFactory/factories/datasets",
+         "apiVersion": "2018-06-01",
+         "properties": {
+            "linkedServiceName": {
+               "referenceName": "[parameters('blobStorageLinkedService')]",
+               "type": "LinkedServiceReference"
+            },
+            "annotations": [],
+            "type": "Json",
+            "typeProperties": {
+               "location": {
+                  "type": "AzureBlobStorageLocation",
+                  "fileName": "input.json",
+                  "folderPath": "data",
+                  "container": "datafactory"
+               }
+            },
+            "schema": {
+               "type": "object",
+               "properties": {
+                  "Person_id": {
+                     "type": "integer"
+                  },
+                  "first_name": {
+                     "type": "string"
+                  },
+                  "last_name": {
+                     "type": "string"
+                  },
+                  "email": {
+                     "type": "string"
+                  },
+                  "gender": {
+                     "type": "string"
+                  },
+                  "job_title": {
+                     "type": "string"
+                  },
+                  "company_name": {
+                     "type": "string"
+                  },
+                  "contract_until": {
+                     "type": "string"
+                  },
+                  "country": {
+                     "type": "string"
+                  },
+                  "city": {
+                     "type": "string"
+                  },
+                  "postal_code": {
+                     "type": "null"
+                  },
+                  "street_name": {
+                     "type": "string"
+                  },
+                  "street_number": {
+                     "type": "string"
+                  },
+                  "works_from_office": {
+                     "type": "boolean"
+                  },
+                  "main_office": {
+                     "type": "string"
+                  }
+               }
+            }
+         }
+      },
+      {
+         "name": "[variables('outputBlobStorageDataSetName')]",
+         "type": "Microsoft.DataFactory/factories/datasets",
+         "apiVersion": "2018-06-01",
+         "properties": {
+            "linkedServiceName": {
+               "referenceName": "[parameters('blobStorageLinkedService')]",
+               "type": "LinkedServiceReference"
+            },
+            "annotations": [],
+            "type": "Json",
+            "typeProperties": {
+               "location": {
+                  "type": "AzureBlobStorageLocation",
+                  "folderPath": "data",
+                  "container": "datafactory"
+               }
+            },
+            "schema": {
+               "type": "object",
+               "properties": {
+                  "Address": {
+                     "type": "string"
+                  },
+                  "Company": {
+                     "type": "string"
+                  },
+                  "Full_Name": {
+                     "type": "string"
+                  },
+                  "Gender": {
+                     "type": "string"
+                  },
+                  "ID": {
+                     "type": "integer"
+                  },
+                  "Job_title": {
+                     "type": "string"
+                  },
+                  "Mail": {
+                     "type": "string"
+                  },
+                  "Works_from": {
+                     "type": "string"
+                  },
+                  "isActive": {
+                     "type": "boolean"
+                  },
+                  "Integration_type": {
+                     "type": "string"
+                  }
+               }
+            }
+         }
+      }
+   ],
+   "outputs": {
+      "inputRestApiDataSet": {
+         "type": "string",
+         "value": "[variables('inputRestApiDataSet')]"
+      },
+      "outputRestApiDataSet": {
+         "type": "string",
+         "value": "[variables('outputRestApiDataSet')]"
+      },
+      "inputBlobStorageDataSet": {
+         "type": "string",
+         "value": "[variables('inputBlobStorageDataSet')]"
+      },
+      "outputBlobStorageDataSet": {
+         "type": "string",
+         "value": "[variables('outputBlobStorageDataSet')]"
+      }
+   }
+}

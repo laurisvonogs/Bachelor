@@ -1,0 +1,276 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "keyVaultName": {
+         "type": "string",
+         "minLength": 1
+      },
+      "deploymentBlobContainerUri": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "URI of the Azure Storage Container that contains all deployment templates."
+         }
+      },
+      "deploymentDateTimeStamp": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "Date Timestamp that is used as postfix for the various deployments."
+         }
+      },
+      "deploymentBlobContainerSasToken": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "SAS token of the Azure Storage Container that contains all deployment templates."
+         }
+      },
+      "inputApiUrl": {
+         "type": "string",
+         "minLength": 1
+      },
+      "sqlServerDomainName": {
+         "type": "string",
+         "minLength": 1
+      },
+      "sqlDatabaseName": {
+         "type": "string",
+         "minLength": 1
+      }
+   },
+   "variables": {
+      "dataFactoryDataflowDeploymentName": "[concat('lauris-datafactory-dw-dataflow-', parameters('deploymentDateTimeStamp'))]",
+      "dataFactoryDatasetsDeploymentName": "[concat('lauris-datafactory-dw-datasets-', parameters('deploymentDateTimeStamp'))]",
+      "dataFactoryIdentityPolicyDeploymentName": "[concat('lauris-datafactory-dw-kv-access-policy-', parameters('deploymentDateTimeStamp'))]",
+      "dataFactoryLinkedServicesDeploymentName": "[concat('lauris-datafactory-dw-linked-services-', parameters('deploymentDateTimeStamp'))]",
+      "dataFactoryPipelineDeploymentName": "[concat('lauris-datafactory-dw-pipeline-', parameters('deploymentDateTimeStamp'))]",
+      "dataFactoryResourceDeploymentName": "[concat('lauris-datafactory-dw-', parameters('deploymentDateTimeStamp'))]",
+      "dataFactoryStorageAccountDeploymentName": "[concat('laurisdatafactorydwsa-', parameters('deploymentDateTimeStamp'))]",
+      "dataFactoryTriggerDeploymentName": "[concat('lauris-datafactory-dw-trigger-', parameters('deploymentDateTimeStamp'))]"
+   },
+   "resources": [
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('dataFactoryStorageAccountDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-datafactory-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.DataFactory.DataWarehouse/laurisdatafactorydwsa.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {}
+         },
+         "dependsOn": []
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('dataFactoryResourceDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-datafactory-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.DataFactory.DataWarehouse/lauris-datafactory-dw.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {}
+         },
+         "dependsOn": []
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('dataFactoryIdentityPolicyDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-shared",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.DataFactory.DataWarehouse/lauris-datafactory-dw-kv-access-policy.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "keyVaultName": {
+                  "value": "[parameters('keyVaultName')]"
+               },
+               "managedIdentityId": {
+                  "value": "[reference(variables('dataFactoryResourceDeploymentName')).outputs.managedIdentityId.value]"
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('dataFactoryResourceDeploymentName')]"
+         ]
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('dataFactoryLinkedServicesDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-datafactory-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.DataFactory.DataWarehouse/lauris-datafactory-dw-linked-services.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "dataFactoryName": {
+                  "value": "[reference(variables('dataFactoryResourceDeploymentName')).outputs.dataFactoryName.value]"
+               },
+               "inputApiUrl": {
+                  "value": "[parameters('inputApiUrl')]"
+               },
+               "sqlServerDomainName": {
+                  "value": "[parameters('sqlServerDomainName')]"
+               },
+               "sqlDatabaseName": {
+                  "value": "[parameters('sqlDatabaseName')]"
+               },
+               "sqlAdministratorLogin": {
+                  "reference": {
+                     "keyVault": {
+                        "id": "[resourceId('lauris-shared', 'Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+                     },
+                     "secretName": "sql-username"
+                  }
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('dataFactoryResourceDeploymentName')]",
+            "[variables('dataFactoryStorageAccountDeploymentName')]",
+            "[variables('dataFactoryIdentityPolicyDeploymentName')]"
+         ]
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('dataFactoryDatasetsDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-datafactory-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.DataFactory.DataWarehouse/lauris-datafactory-dw-datasets.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "dataFactoryName": {
+                  "value": "[reference(variables('dataFactoryResourceDeploymentName')).outputs.dataFactoryName.value]"
+               },
+               "blobStorageLinkedService": {
+                  "value": "[reference(variables('dataFactoryLinkedServicesDeploymentName')).outputs.blobStorageLinkedService.value]"
+               },
+               "inputRestApiLinkedService": {
+                  "value": "[reference(variables('dataFactoryLinkedServicesDeploymentName')).outputs.inputRestApiLinkedService.value]"
+               },
+               "sqlWarehouseLinkedService": {
+                  "value": "[reference(variables('dataFactoryLinkedServicesDeploymentName')).outputs.sqlWarehouseLinkedService.value]"
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('dataFactoryResourceDeploymentName')]",
+            "[variables('dataFactoryLinkedServicesDeploymentName')]",
+            "[variables('dataFactoryIdentityPolicyDeploymentName')]"
+         ]
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('dataFactoryDataflowDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-datafactory-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.DataFactory.DataWarehouse/lauris-datafactory-dw-dataflow.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "dataFactoryName": {
+                  "value": "[reference(variables('dataFactoryResourceDeploymentName')).outputs.dataFactoryName.value]"
+               },
+               "inputJsonDataSet": {
+                  "value": "[reference(variables('dataFactoryDatasetsDeploymentName')).outputs.inputBlobStorageDataSet.value]"
+               },
+               "outputJsonDataSet": {
+                  "value": "[reference(variables('dataFactoryDatasetsDeploymentName')).outputs.outputBlobStorageDataSet.value]"
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('dataFactoryResourceDeploymentName')]",
+            "[variables('dataFactoryDatasetsDeploymentName')]",
+            "[variables('dataFactoryIdentityPolicyDeploymentName')]"
+         ]
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('dataFactoryPipelineDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-datafactory-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.DataFactory.DataWarehouse/lauris-datafactory-dw-pipeline.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "dataFactoryName": {
+                  "value": "[reference(variables('dataFactoryResourceDeploymentName')).outputs.dataFactoryName.value]"
+               },
+               "inputJsonDataSet": {
+                  "value": "[reference(variables('dataFactoryDatasetsDeploymentName')).outputs.inputBlobStorageDataSet.value]"
+               },
+               "outputJsonDataSet": {
+                  "value": "[reference(variables('dataFactoryDatasetsDeploymentName')).outputs.outputBlobStorageDataSet.value]"
+               },
+               "inputRestDataset": {
+                  "value": "[reference(variables('dataFactoryDatasetsDeploymentName')).outputs.inputRestApiDataSet.value]"
+               },
+               "sqlWarehouseDataSet": {
+                  "value": "[reference(variables('dataFactoryDatasetsDeploymentName')).outputs.sqlWarehouseDataSet.value]"
+               },
+               "dataflow": {
+                  "value": "[reference(variables('dataFactoryDataflowDeploymentName')).outputs.dataFlowName.value]"
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('dataFactoryResourceDeploymentName')]",
+            "[variables('dataFactoryDatasetsDeploymentName')]",
+            "[variables('dataFactoryDataflowDeploymentName')]",
+            "[variables('dataFactoryIdentityPolicyDeploymentName')]"
+         ]
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('dataFactoryTriggerDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-datafactory-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.DataFactory.DataWarehouse/lauris-datafactory-dw-trigger.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "dataFactoryName": {
+                  "value": "[reference(variables('dataFactoryResourceDeploymentName')).outputs.dataFactoryName.value]"
+               },
+               "pipeline": {
+                  "value": "[reference(variables('dataFactoryPipelineDeploymentName')).outputs.pipelineName.value]"
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('dataFactoryResourceDeploymentName')]",
+            "[variables('dataFactoryPipelineDeploymentName')]",
+            "[variables('dataFactoryIdentityPolicyDeploymentName')]"
+         ]
+      }
+   ],
+   "outputs": {}
+}

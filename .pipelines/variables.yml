@@ -1,0 +1,6 @@
+variables:
+  azureRegionFull: West Europe
+  azureRegion: we
+  keyVaultName: lauris-keyvault
+  inputApiUrl: https://my.api.mockaroo.com
+  outputApiUrl: https://laurisdatabase-bce0.restdb.io/rest

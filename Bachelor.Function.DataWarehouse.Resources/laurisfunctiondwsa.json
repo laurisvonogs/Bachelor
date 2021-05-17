@@ -1,0 +1,31 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+   },
+   "variables": {
+      "functionAppStorageAccountInstanceName": "laurisfunctiondwsa"
+   },
+   "resources": [
+      {
+         "name": "[variables('functionAppstorageAccountInstanceName')]",
+         "type": "Microsoft.Storage/storageAccounts",
+         "location": "[resourceGroup().location]",
+         "apiVersion": "2019-06-01",
+         "dependsOn": [],
+         "sku": {
+            "name": "Standard_LRS"
+         },
+         "kind": "StorageV2",
+         "properties": {
+            "supportsHttpsTrafficOnly": true
+         }
+      }
+   ],
+   "outputs": {
+      "functionAppStorageAccountName": {
+         "type": "string",
+         "value": "[variables('functionAppstorageAccountInstanceName')]"
+      }
+   }
+}

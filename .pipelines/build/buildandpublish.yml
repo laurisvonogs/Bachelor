@@ -1,0 +1,47 @@
+steps:
+- task: DotNetCoreCLI@2
+  displayName: Publish Function App
+  inputs:
+    command: publish
+    publishWebProjects: false
+    projects: '**/*Integration.csproj'
+    arguments: -o $(Pipeline.Workspace)\drop-packages
+
+- task: CopyFiles@2
+  displayName: Copy ARM templates to staging directory
+  inputs:
+    Contents: |
+      **\*.json
+      !**\bin\**
+      !.vscode\**
+      !*Functions\**
+      !*UnitTests\**
+    TargetFolder: $(Pipeline.Workspace)/drop-templates
+
+- task: AzureFileCopy@3
+  displayName: Copy App Packages to Blob Storage
+  inputs:
+    SourcePath: $(Pipeline.Workspace)/drop-packages
+    azureSubscription: Visual Studio Professional
+    Destination: AzureBlob
+    storage: laurisdeployments
+    ContainerName: builds
+    BlobPrefix: $(Build.SourceBranchName)/$(Build.BuildNumber)/packages
+
+- task: AzureFileCopy@3
+  displayName: Copy ARM templates to Blob Storage
+  inputs:
+    SourcePath: $(Pipeline.Workspace)/drop-templates
+    azureSubscription: Visual Studio Professional
+    Destination: AzureBlob
+    storage: laurisdeployments
+    ContainerName: builds
+    BlobPrefix: $(Build.SourceBranchName)/$(Build.BuildNumber)/templates
+
+- task: PublishBuildArtifacts@1
+  displayName: Publish Artifact - Scripts
+  inputs:
+    pathToPublish: .scripts
+    artifactName: drop-scripts
+    artifactType: container
+

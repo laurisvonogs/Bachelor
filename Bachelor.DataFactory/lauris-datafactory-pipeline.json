@@ -1,0 +1,302 @@
+{
+   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "dataFactoryName": {
+         "type": "string"
+      },
+      "inputJsonDataSet": {
+         "type": "string"
+      },
+      "outputJsonDataSet": {
+         "type": "string"
+      },
+      "inputRestDataset": {
+         "type": "string"
+      },
+      "outputRestDataset": {
+         "type": "string"
+      },
+      "dataflow": {
+         "type": "string"
+      }
+   },
+   "variables": {
+      "pipeline": "Integration",
+      "pipelineName": "[concat(parameters('dataFactoryName'), '/',variables('pipeline'))]"
+   },
+   "resources": [
+      {
+         "name": "[variables('pipelineName')]",
+         "type": "Microsoft.DataFactory/factories/pipelines",
+         "apiVersion": "2018-06-01",
+         "properties": {
+            "activities": [
+               {
+                  "name": "Input data to blob",
+                  "type": "Copy",
+                  "dependsOn": [],
+                  "policy": {
+                     "timeout": "00:15:00",
+                     "retry": 0,
+                     "retryIntervalInSeconds": 30,
+                     "secureOutput": false,
+                     "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                     "source": {
+                        "type": "RestSource",
+                        "httpRequestTimeout": "00:01:00",
+                        "requestInterval": "00.00:00:00.010",
+                        "requestMethod": "GET"
+                     },
+                     "sink": {
+                        "type": "JsonSink",
+                        "storeSettings": {
+                           "type": "AzureBlobStorageWriteSettings"
+                        },
+                        "formatSettings": {
+                           "type": "JsonWriteSettings",
+                           "filePattern": "setOfObjects"
+                        }
+                     },
+                     "enableStaging": false,
+                     "translator": {
+                        "type": "TabularTranslator",
+                        "mappings": [
+                           {
+                              "source": {
+                                 "path": "$['Person_id']"
+                              },
+                              "sink": {
+                                 "path": "$['Person_id']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['first_name']"
+                              },
+                              "sink": {
+                                 "path": "$['first_name']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['last_name']"
+                              },
+                              "sink": {
+                                 "path": "$['last_name']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['email']"
+                              },
+                              "sink": {
+                                 "path": "$['email']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['gender']"
+                              },
+                              "sink": {
+                                 "path": "$['gender']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['job_title']"
+                              },
+                              "sink": {
+                                 "path": "$['job_title']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['company_name']"
+                              },
+                              "sink": {
+                                 "path": "$['company_name']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['contract_until']"
+                              },
+                              "sink": {
+                                 "path": "$['contract_until']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['country']"
+                              },
+                              "sink": {
+                                 "path": "$['country']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['city']"
+                              },
+                              "sink": {
+                                 "path": "$['city']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['postal_code']"
+                              },
+                              "sink": {
+                                 "path": "$['postal_code']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['street_name']"
+                              },
+                              "sink": {
+                                 "path": "$['street_name']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['street_number']"
+                              },
+                              "sink": {
+                                 "path": "$['street_number']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['works_from_office']"
+                              },
+                              "sink": {
+                                 "path": "$['works_from_office']"
+                              }
+                           },
+                           {
+                              "source": {
+                                 "path": "$['main_office']"
+                              },
+                              "sink": {
+                                 "path": "$['main_office']"
+                              }
+                           }
+                        ]
+                     }
+                  },
+                  "inputs": [
+                     {
+                        "referenceName": "[parameters('inputRestDataset')]",
+                        "type": "DatasetReference"
+                     }
+                  ],
+                  "outputs": [
+                     {
+                        "referenceName": "[parameters('inputJsonDataSet')]",
+                        "type": "DatasetReference"
+                     }
+                  ]
+               },
+               {
+                  "name": "Output data to API",
+                  "type": "Copy",
+                  "dependsOn": [
+                     {
+                        "activity": "Compose data",
+                        "dependencyConditions": [
+                           "Succeeded"
+                        ]
+                     }
+                  ],
+                  "policy": {
+                     "timeout": "00:15:00",
+                     "retry": 0,
+                     "retryIntervalInSeconds": 30,
+                     "secureOutput": false,
+                     "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                     "source": {
+                        "type": "JsonSource",
+                        "storeSettings": {
+                           "type": "AzureBlobStorageReadSettings",
+                           "recursive": false,
+                           "wildcardFolderPath": "data",
+                           "wildcardFileName": "output.json",
+                           "enablePartitionDiscovery": false
+                        },
+                        "formatSettings": {
+                           "type": "JsonReadSettings"
+                        }
+                     },
+                     "sink": {
+                        "type": "RestSink",
+                        "httpRequestTimeout": "00:01:40",
+                        "requestInterval": 10,
+                        "requestMethod": "POST",
+                        "writeBatchSize": 10000,
+                        "httpCompressionType": "none"
+                     },
+                     "enableStaging": false
+                  },
+                  "inputs": [
+                     {
+                        "referenceName": "[parameters('outputJsonDataSet')]",
+                        "type": "DatasetReference"
+                     }
+                  ],
+                  "outputs": [
+                     {
+                        "referenceName": "[parameters('outputRestDataset')]",
+                        "type": "DatasetReference"
+                     }
+                  ]
+               },
+               {
+                  "name": "Compose data",
+                  "type": "ExecuteDataFlow",
+                  "dependsOn": [
+                     {
+                        "activity": "Input data to blob",
+                        "dependencyConditions": [
+                           "Succeeded"
+                        ]
+                     }
+                  ],
+                  "policy": {
+                     "timeout": "00:15:00",
+                     "retry": 0,
+                     "retryIntervalInSeconds": 30,
+                     "secureOutput": false,
+                     "secureInput": false
+                  },
+                  "userProperties": [],
+                  "typeProperties": {
+                     "dataflow": {
+                        "referenceName": "[parameters('dataflow')]",
+                        "type": "DataFlowReference"
+                     },
+                     "compute": {
+                        "coreCount": 8,
+                        "computeType": "General"
+                     },
+                     "traceLevel": "Fine"
+                  }
+               }
+            ],
+            "annotations": []
+         }
+      }
+   ],
+   "outputs": {
+      "pipelineName": {
+         "type": "string",
+         "value": "[variables('pipeline')]"
+      }
+   }
+}

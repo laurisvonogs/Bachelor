@@ -1,0 +1,31 @@
+{
+   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+   },
+   "variables": {
+      "dataFactoryName": "lauris-datafactory-dw"
+   },
+   "resources": [
+      {
+         "name": "[variables('dataFactoryName')]",
+         "apiVersion": "2018-06-01",
+         "type": "Microsoft.DataFactory/factories",
+         "location": "[resourceGroup().location]",
+         "kind": "azuredatafactory",
+         "identity": {
+            "type": "SystemAssigned"
+         }
+      }
+   ],
+   "outputs": {
+      "dataFactoryName": {
+         "type": "string",
+         "value": "[variables('dataFactoryName')]"
+      },
+      "managedIdentityId": {
+         "type": "string",
+         "value": "[reference(resourceId('Microsoft.DataFactory/factories', variables('dataFactoryName')), '2018-06-01', 'Full').identity.principalId]"
+      }
+   }
+}

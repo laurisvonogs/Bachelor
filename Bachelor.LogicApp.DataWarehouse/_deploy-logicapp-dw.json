@@ -1,0 +1,96 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "keyVaultName": {
+         "type": "string",
+         "minLength": 1
+      },
+      "deploymentBlobContainerUri": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "URI of the Azure Storage Container that contains all deployment templates."
+         }
+      },
+      "deploymentDateTimeStamp": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "Date Timestamp that is used as postfix for the various deployments."
+         }
+      },
+      "deploymentBlobContainerSasToken": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "SAS token of the Azure Storage Container that contains all deployment templates."
+         }
+      },
+      "inputApiUrl": {
+         "type": "string",
+         "minLength": 1
+      },
+      "deploySqlConnection": {
+         "type": "bool"
+      }
+   },
+   "variables": {
+      "logicAppDataWarehouseDeploymentName": "[concat('lauris-logicapp-dw-', parameters('deploymentDateTimeStamp'))]",
+      "sqlConnectionDeploymentName": "[concat('lauris-sql-connection-', parameters('deploymentDateTimeStamp'))]"
+   },
+   "resources": [
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('logicAppDataWarehouseDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-logicapp-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.LogicApp.DataWarehouse/lauris-logicapp-dw.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "inputApiKey": {
+                  "reference": {
+                     "keyVault": {
+                        "id": "[resourceId('lauris-shared', 'Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+                     },
+                     "secretName": "inputApiKey"
+                  }
+               },
+               "inputApiUrl": {
+                  "value": "[parameters('inputApiUrl')]"
+               },
+               "sqlConnectionName": {
+                  "value": "[reference(variables('sqlConnectionDeploymentName')).outputs.sqlConnectionName.value]"
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('sqlConnectionDeploymentName')]"
+         ]
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('sqlConnectionDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-logicapp-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.LogicApp.DataWarehouse/lauris-sql-connection.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "deploySqlConnection": {
+                  "value": "[parameters('deploySqlConnection')]"
+               }
+            }
+         },
+         "dependsOn": []
+      }
+   ],
+   "outputs": {}
+}

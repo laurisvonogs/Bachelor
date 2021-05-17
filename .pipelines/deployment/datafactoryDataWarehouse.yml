@@ -1,0 +1,33 @@
+steps:
+  - task: AzurePowerShell@4
+    displayName: Set blob container variables
+    inputs:
+      azureSubscription: ${{ parameters.armTemplateSubscription }}
+      ScriptPath: $(Pipeline.Workspace)/drop-scripts/deployment/Set-BlobContainerVariables.ps1
+      azurePowerShellVersion: LatestVersion
+
+  - task: AzurePowerShell@4
+    displayName: 'Set Data Warehouse deployment output variables'
+    inputs:
+      azureSubscription: ${{ parameters.azureSubscription }}
+      ScriptPath: '$(Pipeline.Workspace)/drop-scripts/deployment/Set-OutputVariables.ps1'
+      ScriptArguments: '-resourceGroup $(fullResourceGroupName) -templateName "_deploy-datawarehouse*"'
+      azurePowerShellVersion: LatestVersion
+
+  - task: AzureResourceGroupDeployment@2
+    displayName: Deploy Data Factory Data Warehouse integration resources
+    inputs:
+      azureSubscription: ${{ parameters.azureSubscription }}
+      resourceGroupName: $(fullResourceGroupName)
+      location: $(azureRegionFull)
+      templateLocation: URL of the file
+      csmFileLink: $(deploymentBlobContainerUri)/templates/Bachelor.DataFactory.DataWarehouse/_deploy-datafactory-dw.json$(deploymentBlobContainerSasToken)
+      overrideParameters: >
+        -keyVaultName $(keyVaultName)
+        -deploymentBlobContainerSasToken $(deploymentBlobContainerSasToken)
+        -deploymentBlobContainerUri $(deploymentBlobContainerUri)
+        -deploymentDateTimeStamp $(deploymentDateTimeStamp)
+        -inputApiUrl $(inputApiUrl)
+        -sqlServerDomainName $(sqlServerDomainName)
+        -sqlDatabaseName $(sqlDatabaseName)
+      deploymentOutputs: outputs

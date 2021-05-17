@@ -1,0 +1,176 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "keyVaultName": {
+         "type": "string",
+         "minLength": 1
+      },
+      "deploymentBlobContainerUri": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "URI of the Azure Storage Container that contains all deployment templates."
+         }
+      },
+      "deploymentDateTimeStamp": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "Date Timestamp that is used as postfix for the various deployments."
+         }
+      },
+      "deploymentBlobContainerSasToken": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "SAS token of the Azure Storage Container that contains all deployment templates."
+         }
+      },
+      "inputApiUrl": {
+         "type": "string",
+         "minLength": 1
+      },
+      "outputApiUrl": {
+         "type": "string",
+         "minLength": 1
+      },
+      "sqlDatabaseName": {
+         "type": "string",
+         "minLength": 1
+      },
+      "sqlServerDomainName": {
+         "type": "string",
+         "minLength": 1
+      }
+   },
+   "variables": {
+      "applicationInsightsDeploymentName": "[concat('lauris-function-ai-dw-', parameters('deploymentDateTimeStamp'))]",
+      "appServicePlanDeploymentName": "[concat('lauris-asp-dw-', parameters('deploymentDateTimeStamp'))]",
+      "functionDeploymentName": "[concat('lauris-function-dw-', parameters('deploymentDateTimeStamp'))]",
+      "functionIdentityPolicyDeploymentName": "[concat('lauris-function-dw-kv-access-policy-', parameters('deploymentDateTimeStamp'))]",
+      "functionStorageAccountDeploymentName": "[concat('laurisfunctiondwsa-', parameters('deploymentDateTimeStamp'))]"
+   },
+   "resources": [
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('appServicePlanDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-functions-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.Function.DataWarehouse.Resources/lauris-asp-dw.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {}
+         },
+         "dependsOn": []
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('functionStorageAccountDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-functions-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.Function.DataWarehouse.Resources/laurisfunctiondwsa.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {}
+         },
+         "dependsOn": []
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('applicationInsightsDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-functions-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.Function.DataWarehouse.Resources/lauris-function-ai-dw.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {}
+         },
+         "dependsOn": []
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('functionDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-functions-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.Function.DataWarehouse.Resources/lauris-function-dw.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "functionAppStorageAccountName": {
+                  "value": "[reference(variables('functionStorageAccountDeploymentName')).outputs.functionAppStorageAccountName.value]"
+               },
+               "functionAppConsumptionPlanName": {
+                  "value": "[reference(variables('appServicePlanDeploymentName')).outputs.functionAppConsumptionPlanName.value]"
+               },
+               "keyVaultName": {
+                  "value": "[parameters('keyVaultName')]"
+               },
+               "deploymentBlobContainerUri": {
+                  "value": "[parameters('deploymentBlobContainerUri')]"
+               },
+               "deploymentBlobContainerSasToken": {
+                  "value": "[parameters('deploymentBlobContainerSasToken')]"
+               },
+               "inputApiUrl": {
+                  "value": "[parameters('inputApiUrl')]"
+               },
+               "outputApiUrl": {
+                  "value": "[parameters('outputApiUrl')]"
+               },
+               "sqlDatabaseName": {
+                  "value": "[parameters('sqlDatabaseName')]"
+               },
+               "applicationInsightsInstrumentationkey": {
+                  "value": "[reference(variables('applicationInsightsDeploymentName')).outputs.applicationInsightsInstrumentationkey.value]"
+               },
+               "sqlServerDomainName": {
+                  "value": "[parameters('sqlServerDomainName')]"
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('applicationInsightsDeploymentName')]",
+            "[variables('appServicePlanDeploymentName')]",
+            "[variables('functionStorageAccountDeploymentName')]"
+         ]
+      },
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('functionIdentityPolicyDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-shared",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.Function.DataWarehouse.Resources/lauris-function-dw-kv-access-policy.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "keyVaultName": {
+                  "value": "[parameters('keyVaultName')]"
+               },
+               "managedIdentityId": {
+                  "value": "[reference(variables('functionDeploymentName')).outputs.managedIdentityId.value]"
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('functionDeploymentName')]"
+         ]
+      }
+   ],
+   "outputs": {}
+}

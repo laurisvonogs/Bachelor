@@ -1,0 +1,133 @@
+{
+   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "dataFactoryName": {
+         "type": "string"
+      },
+      "inputApiUrl": {
+         "type": "string",
+         "minLength": 1
+      },
+      "sqlServerDomainName": {
+         "type": "string",
+         "minLength": 1
+      },
+      "sqlDatabaseName": {
+         "type": "string",
+         "minLength": 1
+      },
+      "sqlAdministratorLogin": {
+         "type": "string",
+         "minLength": 1
+      }
+   },
+   "variables": {
+      "blobStorageLinkedService": "ls-azure-blob-storage",
+      "blobStorageLinkedServiceName": "[concat(parameters('dataFactoryName'), '/',variables('blobStorageLinkedService'))]",
+      "keyVaultLinkedService": "ls-keyvault",
+      "keyVaultLinkedServiceName": "[concat(parameters('dataFactoryName'), '/',variables('keyVaultLinkedService'))]",
+      "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('dataFactoryName'))]",
+      "keyVaultLinkedServiceFullName": "[concat(variables('factoryId'), '/linkedServices/',variables('keyVaultLinkedService'))]",
+      "inputRestApiLinkedService": "ls-input-rest-api",
+      "inputRestApiLinkedServiceName": "[concat(parameters('dataFactoryName'), '/',variables('inputRestApiLinkedService'))]",
+      "sqlDataWarehouseLinkedService": "ls-sql",
+      "sqlDataWarehouseLinkedServiceName": "[concat(parameters('dataFactoryName'), '/',variables('sqlDataWarehouseLinkedService'))]"
+   },
+   "resources": [
+      {
+         "name": "[variables('blobStorageLinkedServiceName')]",
+         "type": "Microsoft.DataFactory/factories/linkedServices",
+         "apiVersion": "2018-06-01",
+         "properties": {
+            "type": "AzureBlobStorage",
+            "typeProperties": {
+               "connectionString": {
+                  "type": "AzureKeyVaultSecret",
+                  "store": {
+                     "referenceName": "[variables('keyVaultLinkedService')]",
+                     "type": "LinkedServiceReference"
+                  },
+                  "secretName": "dataFactoryDWStorageAccountConnectionString"
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('keyVaultLinkedServiceFullName')]"
+         ]
+      },
+      {
+         "name": "[variables('keyVaultLinkedServiceName')]",
+         "type": "Microsoft.DataFactory/factories/linkedServices",
+         "apiVersion": "2018-06-01",
+         "properties": {
+            "annotations": [],
+            "type": "AzureKeyVault",
+            "typeProperties": {
+               "baseUrl": "https://lauris-keyvault.vault.azure.net/"
+            }
+         }
+      },
+      {
+         "name": "[variables('inputRestApiLinkedServiceName')]",
+         "type": "Microsoft.DataFactory/factories/linkedServices",
+         "apiVersion": "2018-06-01",
+         "properties": {
+            "annotations": [],
+            "type": "RestService",
+            "typeProperties": {
+               "url": "[concat(parameters('inputApiUrl'), '/users.json')]",
+               "enableServerCertificateValidation": true,
+               "authenticationType": "Anonymous",
+               "authHeaders": {
+                  "X-API-Key": {
+                     "type": "AzureKeyVaultSecret",
+                     "store": {
+                        "referenceName": "[variables('keyVaultLinkedService')]",
+                        "type": "LinkedServiceReference"
+                     },
+                     "secretName": "inputApiKey"
+                  }
+               }
+            }
+         },
+         "dependsOn": [
+            "[variables('keyVaultLinkedServiceFullName')]"
+         ]
+      },
+      {
+         "name": "[variables('sqlDataWarehouseLinkedServiceName')]",
+         "type": "Microsoft.DataFactory/factories/linkedservices",
+         "apiVersion": "2018-06-01",
+         "properties": {
+            "annotations": [],
+            "type": "AzureSqlDatabase",
+            "typeProperties": {
+               "connectionString": "[concat('Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=', parameters('sqlServerDomainName'), ';Initial Catalog=', parameters('sqlDatabaseName'),';User ID=', parameters('sqlAdministratorLogin'))]",
+               "password": {
+                  "type": "AzureKeyVaultSecret",
+                  "store": {
+                     "referenceName": "[variables('keyVaultLinkedService')]",
+                     "type": "LinkedServiceReference"
+                  },
+                  "secretName": "sql-password"
+               }
+            }
+         }
+      }
+   ],
+   "outputs": {
+      "blobStorageLinkedService": {
+         "type": "string",
+         "value": "[variables('blobStorageLinkedService')]"
+      },
+      "inputRestApiLinkedService": {
+         "type": "string",
+         "value": "[variables('inputRestApiLinkedService')]"
+      },
+      "sqlWarehouseLinkedService": {
+         "type": "string",
+         "value": "[variables('sqlDataWarehouseLinkedService')]"
+      }
+   }
+}

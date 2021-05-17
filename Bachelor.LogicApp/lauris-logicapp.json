@@ -1,0 +1,180 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "inputApiKey": {
+         "type": "securestring",
+         "minLength": 1
+      },
+      "outputApiKey": {
+         "type": "securestring",
+         "minLength": 1
+      },
+      "inputApiUrl": {
+         "type": "string",
+         "minLength": 1
+      },
+      "outputApiUrl": {
+         "type": "string",
+         "minLength": 1
+      }
+   },
+   "variables": {
+      "logicAppLogicalName": "lauris-logicapp-resource"
+   },
+   "resources": [
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('logicAppLogicalName')]",
+         "type": "Microsoft.Logic/workflows",
+         "location": "[resourceGroup().location]",
+         "properties": {
+            "definition": {
+               "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+               "actions": {
+                  "For_each_employee": {
+                     "actions": {
+                        "Append_to_array_variable": {
+                           "inputs": {
+                              "name": "returnedList",
+                              "value": "@outputs('Compose_employee_object')"
+                           },
+                           "runAfter": {
+                              "Compose_employee_object": [
+                                 "Succeeded"
+                              ]
+                           },
+                           "type": "AppendToArrayVariable"
+                        },
+                        "Compose_employee_object": {
+                           "inputs": {
+                              "Address": "@concat(item()['street_name'],' ',item()['street_number'],', ',item()['postal_code'],' ',item()['city'],', ',item()['country'])",
+                              "Company": "@items('For_each_employee')['company_name']",
+                              "Full_Name": "@concat(item()['first_name'], ' ',item()['last_name'])",
+                              "Gender": "@if(equals(item()['gender'], 'Male'), 'M', 'F')",
+                              "ID": "@items('For_each_employee')['Person_id']",
+                              "Job_title": "@items('For_each_employee')['job_title']",
+                              "Mail": "@items('For_each_employee')['email']",
+                              "Works_from": "@if(equals(item()['works_from_office'],true),item()['main_office'],'Home')",
+                              "isActive": "@if(greaterOrEquals(formatDateTime(item()['contract_until'],'yyyy-MM-dd'),formatDateTime(utcNow(),'yyyy-MM-dd')),true,false)",
+                              "Integration_type": "LogicApp"
+                           },
+                           "runAfter": {},
+                           "type": "Compose"
+                        }
+                     },
+                     "foreach": "@body('Get_employees')",
+                     "runAfter": {
+                        "Get_employees": [
+                           "Succeeded"
+                        ]
+                     },
+                     "type": "Foreach"
+                  },
+                  "Get_employees": {
+                     "inputs": {
+                        "headers": {
+                           "X-API-Key": "@parameters('inputApiKey')"
+                        },
+                        "method": "GET",
+                        "uri": "@{concat(parameters('inputApiUrl'),'/users.json')}"
+                     },
+                     "runAfter": {
+                        "Initialize_returnedList": [
+                           "Succeeded"
+                        ]
+                     },
+                     "type": "Http"
+                  },
+                  "Initialize_returnedList": {
+                     "inputs": {
+                        "variables": [
+                           {
+                              "name": "returnedList",
+                              "type": "array"
+                           }
+                        ]
+                     },
+                     "runAfter": {},
+                     "type": "InitializeVariable"
+                  },
+                  "Post_employees_to_end_system": {
+                     "inputs": {
+                        "body": "@variables('returnedList')",
+                        "headers": {
+                           "Content-Type": "application/json",
+                           "x-apikey": "@parameters('outputApiKey')"
+                        },
+                        "method": "POST",
+                        "uri": "@{concat(parameters('outputApiUrl'),'/collection')}"
+                     },
+                     "runAfter": {
+                        "For_each_employee": [
+                           "Succeeded"
+                        ]
+                     },
+                     "type": "Http"
+                  }
+               },
+               "contentVersion": "1.0.0.0",
+               "outputs": {},
+               "parameters": {
+                  "$connections": {
+                     "defaultValue": {},
+                     "type": "Object"
+                  },
+                  "inputApiKey": {
+                     "type": "SecureString"
+                  },
+                  "outputApiKey": {
+                     "type": "SecureString"
+                  },
+                  "inputApiUrl": {
+                     "type": "String"
+                  },
+                  "outputApiUrl": {
+                     "type": "String"
+                  }
+               },
+               "triggers": {
+                  "Recurrence": {
+                     "recurrence": {
+                        "frequency": "Day",
+                        "interval": 1,
+                        "schedule": {
+                           "hours": [
+                              0
+                           ]
+                        },
+                        "startTime": "2017-03-24T00:00:00Z",
+                        "timeZone": "W. Europe Standard Time"
+                     },
+                     "runtimeConfiguration": {
+                        "concurrency": {
+                           "runs": 1
+                        }
+                     },
+                     "type": "Recurrence"
+                  }
+               }
+            },
+            "parameters": {
+               "$connections": {
+               },
+               "inputApiKey": {
+                  "value": "[parameters('inputApiKey')]"
+               },
+               "outputApiKey": {
+                  "value": "[parameters('outputApiKey')]"
+               },
+               "inputApiUrl": {
+                  "value": "[parameters('inputApiUrl')]"
+               },
+               "outputApiUrl": {
+                  "value": "[parameters('outputApiUrl')]"
+               }
+            }
+         }
+      }
+   ]
+}

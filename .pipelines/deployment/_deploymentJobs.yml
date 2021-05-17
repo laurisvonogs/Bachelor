@@ -1,0 +1,101 @@
+jobs:
+- deployment: logicApp
+  displayName: Logic App
+  environment: ${{ parameters.environment }}
+  workspace:
+    clean: all
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - template: logicapp.yml
+          parameters:
+            azureSubscription: ${{ parameters.azureSubscription }}
+            armTemplateSubscription: ${{ parameters.armTemplateSubscription }}
+
+- deployment: function
+  displayName: Function
+  environment: ${{ parameters.environment }}
+  workspace:
+    clean: all
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - template: function.yml
+          parameters:
+            azureSubscription: ${{ parameters.azureSubscription }}
+            armTemplateSubscription: ${{ parameters.armTemplateSubscription }}
+
+- deployment: dataFactory
+  displayName: Data Factory
+  environment: ${{ parameters.environment }}
+  workspace:
+    clean: all
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - template: datafactory.yml
+          parameters:
+            azureSubscription: ${{ parameters.azureSubscription }}
+            armTemplateSubscription: ${{ parameters.armTemplateSubscription }}
+
+- deployment: dataWarehouse
+  displayName: Data Warehouse
+  environment: ${{ parameters.environment }}
+  workspace:
+    clean: all
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - template: datawarehouse.yml
+          parameters:
+            azureSubscription: ${{ parameters.azureSubscription }}
+            armTemplateSubscription: ${{ parameters.armTemplateSubscription }}
+
+- deployment: logicAppDataWarehouse
+  displayName: Logic App with Data Warehouse
+  environment: ${{ parameters.environment }}
+  dependsOn: dataWarehouse
+  workspace:
+    clean: all
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - template: logicappDataWarehouse.yml
+          parameters:
+            azureSubscription: ${{ parameters.azureSubscription }}
+            armTemplateSubscription: ${{ parameters.armTemplateSubscription }}
+
+- deployment: functionDataWarehouse
+  displayName: Function with Data Warehouse
+  environment: ${{ parameters.environment }}
+  dependsOn: dataWarehouse
+  workspace:
+    clean: all
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - template: functionDataWarehouse.yml
+          parameters:
+            azureSubscription: ${{ parameters.azureSubscription }}
+            armTemplateSubscription: ${{ parameters.armTemplateSubscription }}
+
+- deployment: dataFactoryDataWarehouse
+  displayName: Data Factory with Data Warehouse
+  environment: ${{ parameters.environment }}
+  dependsOn: dataWarehouse
+  workspace:
+    clean: all
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - template: datafactoryDataWarehouse.yml
+          parameters:
+            azureSubscription: ${{ parameters.azureSubscription }}
+            armTemplateSubscription: ${{ parameters.armTemplateSubscription }}

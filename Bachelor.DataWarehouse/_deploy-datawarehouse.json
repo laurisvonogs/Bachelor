@@ -1,0 +1,78 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "keyVaultName": {
+         "type": "string",
+         "minLength": 1
+      },
+      "deploymentBlobContainerUri": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "URI of the Azure Storage Container that contains all deployment templates."
+         }
+      },
+      "deploymentDateTimeStamp": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "Date Timestamp that is used as postfix for the various deployments."
+         }
+      },
+      "deploymentBlobContainerSasToken": {
+         "type": "string",
+         "minLength": 1,
+         "metadata": {
+            "description": "SAS token of the Azure Storage Container that contains all deployment templates."
+         }
+      }
+   },
+   "variables": {
+      "sqlDataWarehouseDeploymentName": "[concat('lauris-sql-datawarehouse', parameters('deploymentDateTimeStamp'))]"
+   },
+   "resources": [
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('sqlDataWarehouseDeploymentName')]",
+         "type": "Microsoft.Resources/deployments",
+         "resourceGroup": "lauris-datawarehouse",
+         "properties": {
+            "mode": "Incremental",
+            "templateLink": {
+               "uri": "[concat(parameters('deploymentBlobContainerUri'), '/templates/Bachelor.DataWarehouse/lauris-sql-datawarehouse.json', parameters('deploymentBlobContainerSasToken'))]",
+               "contentVersion": "1.0.0.0"
+            },
+            "parameters": {
+               "sqlAdministratorLogin": {
+                  "reference": {
+                     "keyVault": {
+                        "id": "[resourceId('lauris-shared', 'Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+                     },
+                     "secretName": "sql-username"
+                  }
+               },
+               "sqlAdministratorLoginPassword": {
+                  "reference": {
+                     "keyVault": {
+                        "id": "[resourceId('lauris-shared', 'Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+                     },
+                     "secretName": "sql-password"
+                  }
+               }
+            }
+         },
+         "dependsOn": []
+      }
+   ],
+   "outputs": {
+      "sqlServerDomainName": {
+         "type": "string",
+         "value": "[reference(variables('sqlDataWarehouseDeploymentName')).outputs.sqlServerDomainName.value]"
+      },
+      "sqlDatabaseName": {
+         "type": "string",
+         "value": "[reference(variables('sqlDataWarehouseDeploymentName')).outputs.sqlDatabaseName.value]"
+      }
+   }
+}

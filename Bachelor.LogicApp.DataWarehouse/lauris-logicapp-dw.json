@@ -1,0 +1,205 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "inputApiKey": {
+         "type": "securestring",
+         "minLength": 1
+      },
+      "inputApiUrl": {
+         "type": "string",
+         "minLength": 1
+      },
+      "sqlConnectionName": {
+         "type": "string",
+         "minLength": 1
+      }
+   },
+   "variables": {
+      "logicAppLogicalName": "lauris-logicapp-dw"
+   },
+   "resources": [
+      {
+         "apiVersion": "2019-05-01",
+         "name": "[variables('logicAppLogicalName')]",
+         "type": "Microsoft.Logic/workflows",
+         "location": "[resourceGroup().location]",
+         "properties": {
+            "definition": {
+               "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+               "actions": {
+                  "For_each_employee": {
+                     "actions": {
+                        "Check_if_employee_exists_in_database": {
+                           "actions": {
+                              "Insert_employee_row": {
+                                 "inputs": {
+                                    "body": {
+                                       "Address": "@{concat(item()['street_name'],' ',item()['street_number'],', ',item()['postal_code'],' ',item()['city'],', ',item()['country'])}",
+                                       "Company": "@{item()['company_name']}",
+                                       "Full_Name": "@{concat(item()['first_name'], ' ',item()['last_name'])}",
+                                       "Gender": "@{if(equals(item()['gender'], 'Male'), 'M', 'F')}",
+                                       "ID": "@item()['Person_id']",
+                                       "Integration_type": "LogicApp",
+                                       "Job_title": "@{item()['job_title']}",
+                                       "Mail": "@{item()['email']}",
+                                       "Works_from": "@{if(equals(item()['works_from_office'],true),item()['main_office'],'Home')}",
+                                       "isActive": "@if(greaterOrEquals(formatDateTime(item()['contract_until'],'yyyy-MM-dd'),formatDateTime(utcNow(),'yyyy-MM-dd')),1,0)"
+                                    },
+                                    "host": {
+                                       "connection": {
+                                          "name": "@parameters('$connections')['sqlConnection']['connectionId']"
+                                       }
+                                    },
+                                    "method": "post",
+                                    "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('default'))},@{encodeURIComponent(encodeURIComponent('default'))}/tables/@{encodeURIComponent(encodeURIComponent('[dbo].[Emp_la]'))}/items"
+                                 },
+                                 "runAfter": {},
+                                 "type": "ApiConnection"
+                              }
+                           },
+                           "else": {
+                              "actions": {
+                                 "Update_employee_row": {
+                                    "inputs": {
+                                       "body": {
+                                          "Address": "@{concat(item()['street_name'],' ',item()['street_number'],', ',item()['postal_code'],' ',item()['city'],', ',item()['country'])}",
+                                          "Company": "@{item()['company_name']}",
+                                          "Full_Name": "@{concat(item()['first_name'], ' ',item()['last_name'])}",
+                                          "Gender": "@{if(equals(item()['gender'], 'Male'), 'M', 'F')}",
+                                          "Integration_type": "LogicApp",
+                                          "Job_title": "@{item()['job_title']}",
+                                          "Mail": "@{item()['email']}",
+                                          "Works_from": "@{if(equals(item()['works_from_office'],true),item()['main_office'],'Home')}",
+                                          "isActive": "@if(greaterOrEquals(formatDateTime(item()['contract_until'],'yyyy-MM-dd'),formatDateTime(utcNow(),'yyyy-MM-dd')),1,0)"
+                                       },
+                                       "host": {
+                                          "connection": {
+                                             "name": "@parameters('$connections')['sqlConnection']['connectionId']"
+                                          }
+                                       },
+                                       "method": "patch",
+                                       "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('default'))},@{encodeURIComponent(encodeURIComponent('default'))}/tables/@{encodeURIComponent(encodeURIComponent('[dbo].[Emp_la]'))}/items/@{encodeURIComponent(encodeURIComponent(item()['Person_id']))}"
+                                    },
+                                    "runAfter": {},
+                                    "type": "ApiConnection"
+                                 }
+                              }
+                           },
+                           "expression": {
+                              "and": [
+                                 {
+                                    "equals": [
+                                       "@empty(body('Get_employee')?['value'])",
+                                       true
+                                    ]
+                                 }
+                              ]
+                           },
+                           "runAfter": {
+                              "Get_employee": [
+                                 "Succeeded"
+                              ]
+                           },
+                           "type": "If"
+                        },
+                        "Get_employee": {
+                           "inputs": {
+                              "host": {
+                                 "connection": {
+                                    "name": "@parameters('$connections')['sqlConnection']['connectionId']"
+                                 }
+                              },
+                              "method": "get",
+                              "path": "/v2/datasets/@{encodeURIComponent(encodeURIComponent('default'))},@{encodeURIComponent(encodeURIComponent('default'))}/tables/@{encodeURIComponent(encodeURIComponent('[dbo].[Emp_la]'))}/items",
+                              "queries": {
+                                 "$filter": "ID eq @{item()['Person_id']}"
+                              }
+                           },
+                           "runAfter": {},
+                           "type": "ApiConnection"
+                        }
+                     },
+                     "foreach": "@body('Get_employees')",
+                     "runAfter": {
+                        "Get_employees": [
+                           "Succeeded"
+                        ]
+                     },
+                     "runtimeConfiguration": {
+                        "concurrency": {
+                           "repetitions": 1
+                        }
+                     },
+                     "type": "Foreach"
+                  },
+                  "Get_employees": {
+                     "inputs": {
+                        "headers": {
+                           "X-API-Key": "@parameters('inputApiKey')"
+                        },
+                        "method": "GET",
+                        "uri": "@{concat(parameters('inputApiUrl'),'/users.json')}"
+                     },
+                     "runAfter": {},
+                     "type": "Http"
+                  }
+               },
+               "contentVersion": "1.0.0.0",
+               "outputs": {},
+               "parameters": {
+                  "$connections": {
+                     "defaultValue": {},
+                     "type": "Object"
+                  },
+                  "inputApiKey": {
+                     "type": "SecureString"
+                  },
+                  "inputApiUrl": {
+                     "type": "String"
+                  }
+               },
+               "triggers": {
+                  "Recurrence": {
+                     "recurrence": {
+                        "frequency": "Day",
+                        "interval": 1,
+                        "schedule": {
+                           "hours": [
+                              0
+                           ]
+                        },
+                        "startTime": "2017-03-24T00:00:00Z",
+                        "timeZone": "W. Europe Standard Time"
+                     },
+                     "runtimeConfiguration": {
+                        "concurrency": {
+                           "runs": 1
+                        }
+                     },
+                     "type": "Recurrence"
+                  }
+               }
+            },
+            "parameters": {
+               "$connections": {
+                  "value": {
+                     "sqlConnection": {
+                        "connectionId": "[resourceId('Microsoft.Web/connections', parameters('sqlConnectionName'))]",
+                        "connectionName": "[parameters('sqlConnectionName')]",
+                        "id": "[reference(concat('Microsoft.Web/connections/', parameters('sqlConnectionName')), '2018-07-01-preview').api.id]"
+                     }
+                  }
+
+               },
+               "inputApiKey": {
+                  "value": "[parameters('inputApiKey')]"
+               },
+               "inputApiUrl": {
+                  "value": "[parameters('inputApiUrl')]"
+               }
+            }
+         }
+      }
+   ]
+}

@@ -1,0 +1,96 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+      "sqlAdministratorLogin": {
+         "type": "string",
+         "metadata": {
+            "description": "The administrator username of the SQL Server."
+         }
+      },
+      "sqlAdministratorLoginPassword": {
+         "type": "securestring",
+         "metadata": {
+            "description": "The administrator password of the SQL Server."
+         }
+      }
+   },
+   "variables": {
+      "sqlServerName": "lauris-sqlserver",
+      "sqlDatabaseName": "lauris-database",
+      "databaseSku": "Basic",
+      "databaseCollation": "SQL_Latin1_General_CP1_CI_AS"
+   },
+   "resources": [
+      {
+         "name": "[variables('sqlServerName')]",
+         "type": "Microsoft.Sql/servers",
+         "apiVersion": "2020-08-01-preview",
+         "location": "[resourceGroup().location]",
+         "properties": {
+            "administratorLogin": "[parameters('sqlAdministratorLogin')]",
+            "administratorLoginPassword": "[parameters('sqlAdministratorLoginPassword')]",
+            "version": "12.0",
+            "publicNetworkAccess": "Enabled"
+         }
+      },
+      {
+         "type": "Microsoft.Sql/servers/firewallRules",
+         "apiVersion": "2020-08-01-preview",
+         "name": "[concat(variables('sqlServerName'), '/AllowAllWindowsAzureIps')]",
+         "properties": {
+            "startIpAddress": "0.0.0.0",
+            "endIpAddress": "0.0.0.0"
+         },
+         "dependsOn": [
+            "[variables('sqlServerName')]"
+         ]
+      },
+      {
+         "type": "Microsoft.Sql/servers/firewallRules",
+         "apiVersion": "2020-08-01-preview",
+         "name": "[concat(variables('sqlServerName'), '/ClientIp-2021-4-24_14-24-25')]",
+         "properties": {
+            "startIpAddress": "77.38.207.29",
+            "endIpAddress": "77.38.207.29"
+         },
+         "dependsOn": [
+            "[variables('sqlServerName')]"
+         ]
+      },
+      {
+         "type": "Microsoft.Sql/servers/databases",
+         "apiVersion": "2020-08-01-preview",
+         "name": "[concat(variables('sqlServerName'), '/', variables('sqlDatabaseName'))]",
+         "location": "westeurope",
+         "sku": {
+            "name": "[variables('databaseSku')]",
+            "tier": "[variables('databaseSku')]",
+            "capacity": 5
+         },
+         "kind": "v12.0,user",
+         "properties": {
+            "collation": "[variables('databaseCollation')]",
+            "maxSizeBytes": 2147483648,
+            "catalogCollation": "[variables('databaseCollation')]",
+            "zoneRedundant": false,
+            "readScale": "Disabled",
+            "storageAccountType": "GRS",
+            "maintenanceConfigurationId": "[concat('subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Maintenance/publicMaintenanceConfigurations/SQL_Default')]"
+         },
+         "dependsOn": [
+            "[variables('sqlServerName')]"
+         ]
+      }
+   ],
+   "outputs": {
+      "sqlServerDomainName": {
+         "type": "string",
+         "value": "[reference(resourceId('Microsoft.Sql/servers/', variables('sqlServerName'))).fullyQualifiedDomainName]"
+      },
+      "sqlDatabaseName": {
+         "type": "string",
+         "value": "[variables('sqlDatabaseName')]"
+      }
+   }
+}

@@ -1,0 +1,44 @@
+{
+   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+   "contentVersion": "1.0.0.0",
+   "parameters": {
+   },
+   "variables": {
+      "functionAppConsumptionPlanName": "lauris-asp"
+   },
+   "resources": [
+      {
+         "type": "Microsoft.Web/serverfarms",
+         "sku": {
+            "name": "Y1",
+            "tier": "Dynamic",
+            "size": "Y1",
+            "family": "Y",
+            "capacity": 0
+         },
+         "kind": "functionapp",
+         "name": "[variables('functionAppConsumptionPlanName')]",
+         "location": "[resourceGroup().location]",
+         "apiVersion": "2018-11-01",
+         "scale": null,
+         "properties": {
+            "name": "[variables('functionAppConsumptionPlanName')]",
+            "workerTierName": null,
+            "adminSiteName": null,
+            "hostingEnvironmentProfile": null,
+            "perSiteScaling": false,
+            "reserved": false,
+            "targetWorkerCount": 0,
+            "targetWorkerSizeId": 0
+         },
+         "dependsOn": [
+         ]
+      }
+   ],
+   "outputs": {
+      "functionAppConsumptionPlanName": {
+         "type": "string",
+         "value": "[variables('functionAppConsumptionPlanName')]"
+      }
+   }
+}
